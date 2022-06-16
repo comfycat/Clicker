@@ -4,7 +4,6 @@ pub struct Upgrade {
     width: f32,
     height: f32,
     cost: i32,
-    value: f32,
     onetime: bool,
     owned: i32,
     text: String
@@ -16,7 +15,6 @@ impl Upgrade {
             width,
             height,
             cost,
-            value: -1.0,
             onetime,
             owned,
             text: text.to_owned()
@@ -25,11 +23,25 @@ impl Upgrade {
 
     // Renders the upgrade at the given x and y values
     pub fn render(&self, render_x: f32, render_y: f32) {
-        let render_color = if self.onetime == false {BLUE} 
-            else if self.owned == 0 {RED} else {GREEN};
+        // Sets the color the upgrade renders as based on type
+        let render_color = if self.owned == 0 {RED} 
+            else if self.onetime == false {BLUE} else {GREEN};
         draw_rectangle(render_x, render_y, self.width, self.height, render_color);
-        draw_text(&self.text, render_x + (self.width * 0.1), render_y + 30.0, 30.0, DARKGRAY);
+        if !self.onetime {
+            let output_text: String = format!("{}({})", &self.text, self.owned);
+            draw_text(&output_text, render_x + (self.width * 0.1), render_y + 30.0, 25.0, DARKGRAY);
+        } else {
+            draw_text(&self.text, render_x + (self.width * 0.1), render_y + 30.0, 30.0, DARKGRAY);
+        }
     }
+
+    /* Idea for a variable font size
+    // Returns the maximum font size which still fits in the upgrade box
+    fn render_text_size(input_text: &str) -> f32 {
+        
+        return -1.0;
+    }
+    */
 
     // Attempts to purchase the upgrade
     // - Respects onetime property
@@ -47,7 +59,7 @@ impl Upgrade {
             return 0;
         }
     }
-    
+    /*
     // Does not mutate object
     pub fn get_cost(&self) -> i32 {
         return self.cost;
@@ -61,6 +73,7 @@ impl Upgrade {
     pub fn method(&self) {
         let the_cost = self.cost;
     }
+    */
 }
 
 
