@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 
-use crate::clickpower::Clickpower;
+use crate::gamevalues::Gamevalues;
 
 pub struct Upgrade {
     width: f32,
@@ -9,11 +9,11 @@ pub struct Upgrade {
     owned: i32,
     onetime: bool,
     text: String,
-    func: Box<dyn Fn(&mut Clickpower)>
+    func: Box<dyn Fn(&mut Gamevalues)>
 }
 
 impl Upgrade {
-    pub fn new(width: f32, height: f32, cost: i32, owned: i32, onetime: bool, text: &str, func: Box<dyn Fn(&mut Clickpower)>) -> Upgrade {
+    pub fn new(width: f32, height: f32, cost: i32, owned: i32, onetime: bool, text: &str, func: Box<dyn Fn(&mut Gamevalues)>) -> Upgrade {
         Upgrade {
             width,
             height,
@@ -51,7 +51,7 @@ impl Upgrade {
     // Attempts to purchase the upgrade
     // - Respects onetime property
     // - Verifies player has enough points to afford
-    pub fn purchase(&mut self, counter: i32, clickpower: &mut Clickpower) -> i32 {
+    pub fn purchase(&mut self, counter: i32, gamevalues: &mut Gamevalues) -> i32 {
         // Onetime purchase is already owned
         if self.onetime && self.owned == 1 {
             return 0;
@@ -59,7 +59,7 @@ impl Upgrade {
         // or non-onetime purchase is not owned and player does not have enough points to purchase
         } else if self.cost <= counter {
             // Applies the purchase
-            (self.func)(clickpower);
+            (self.func)(gamevalues);
             self.owned += 1;
             return self.cost;
         } else {

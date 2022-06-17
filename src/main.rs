@@ -3,10 +3,10 @@ use std::time::{Instant, Duration};
 use macroquad::prelude::*;
 
 use upgrade::Upgrade;
-use clickpower::Clickpower;
+use gamevalues::Gamevalues;
 
 mod upgrade;
-mod clickpower;
+mod gamevalues;
 
 #[macroquad::main("Clicker Game")]
 async fn main() {
@@ -29,21 +29,24 @@ async fn main() {
     let mut hidden = false;
     // Initalizes the counter variable for counting the player's points
     let mut counter = 0;
-    // Initalizes the clickpow variable as a struct for maximizing player value from upgrades
-    let mut clickpow = Clickpower::new(1, 1);
+    // Initalizes the gamevalues variable as a struct for maximizing player value from upgrades
+    // TESTING Initalizing the persecond variable to determine points gained per second in the gamevalues struct
+    let mut gamevalues = Gamevalues::new(1, 1, 0);
     // Creates the reference for counting seconds with
     let mut game_timer = Instant::now();
     
     // Creates a vector containing all of the upgrades
     let mut upgrades = vec![
         // pub fn new(width: f32, height: f32, cost: i32, onetime: i32, owned: bool, text: &str) -> Upgrade
-        Upgrade::new(upgrade_w, upgrade_h, 5, 0, true, "Upgrade 1", Box::new(|clickpower: &mut Clickpower| {
-            clickpower.clickpow_add += 1;
+        Upgrade::new(upgrade_w, upgrade_h, 5, 0, true, "Upgrade 1", Box::new(|gamevalues: &mut Gamevalues| {
+            gamevalues.clickpow_add += 1;
         })),
-        Upgrade::new(upgrade_w, upgrade_h, 30, 0, true, "Upgrade 2", Box::new(|clickpower: &mut Clickpower| {
-            clickpower.clickpow_mult *= 2;
+        Upgrade::new(upgrade_w, upgrade_h, 30, 0, true, "Upgrade 2", Box::new(|gamevalues: &mut Gamevalues| {
+            gamevalues.clickpow_mult *= 2;
         })),
-        Upgrade::new(upgrade_w, upgrade_h, 10, 0, false, "Upgrade 3", Box::new(|i| {})),
+        Upgrade::new(upgrade_w, upgrade_h, 20, 0, false, "Upgrade 3", Box::new(|gamevalues: &mut Gamevalues| {
+            gamevalues.persecond += 1;
+        })),
         // ...
     ];
 
@@ -58,12 +61,14 @@ async fn main() {
         draw_circle(button_x, button_y, button_r, button_color);
         // If the player presses the main button, it gives them a point
         if mouse_pressed && mouse_in_circle(button_x, button_y, button_r) {
-            counter += clickpow.get_clickpower();  
+            counter += gamevalues.get_clickpower();  
         }
         
         // Checks to see if a second has passed for timing, if one has, resets the time since the last second was counted
         // For adding income per second upgrades
         if game_timer.elapsed() > Duration::from_secs(1) {
+            // Adds the income per second in the Gamevalues struct
+            counter += gamevalues.persecond;
             game_timer = Instant::now();
         }
 
@@ -82,7 +87,7 @@ async fn main() {
                 // If the player clicks on an upgrade, it tries to purchase that upgrade
                 // Deducts the number of points spent, which is returned by the purchase function
                 if mouse_pressed && mouse_in_rectangle(upgrade_x, upgrade_y, upgrade_w, upgrade_h){
-                    let deduction = upgrade.purchase(counter, &mut clickpow);
+                    let deduction = upgrade.purchase(counter, &mut gamevalues);
                     counter -= deduction;
                 }
             }
