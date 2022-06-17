@@ -1,23 +1,27 @@
 use macroquad::prelude::*;
 
+use crate::clickpower::Clickpower;
+
 pub struct Upgrade {
     width: f32,
     height: f32,
     cost: i32,
-    onetime: bool,
     owned: i32,
-    text: String
+    onetime: bool,
+    text: String,
+    func: Box<dyn Fn(&mut Clickpower)>
 }
 
 impl Upgrade {
-    pub fn new(width: f32, height: f32, cost: i32, owned: i32, onetime: bool, text: &str) -> Upgrade {
+    pub fn new(width: f32, height: f32, cost: i32, owned: i32, onetime: bool, text: &str, func: Box<dyn Fn(&mut Clickpower)>) -> Upgrade {
         Upgrade {
             width,
             height,
             cost,
-            onetime,
             owned,
-            text: text.to_owned()
+            onetime,
+            text: text.to_owned(),
+            func
         }
     }
 
@@ -27,6 +31,7 @@ impl Upgrade {
         let render_color = if self.owned == 0 {RED} 
             else if self.onetime == false {BLUE} else {GREEN};
         draw_rectangle(render_x, render_y, self.width, self.height, render_color);
+        // If upgrade can be purchased multiple times, displays the number owned
         if !self.onetime {
             let output_text: String = format!("{}({})", &self.text, self.owned);
             draw_text(&output_text, render_x + (self.width * 0.1), render_y + 30.0, 25.0, DARKGRAY);
@@ -46,13 +51,15 @@ impl Upgrade {
     // Attempts to purchase the upgrade
     // - Respects onetime property
     // - Verifies player has enough points to afford
-    pub fn purchase(&mut self, counter: i32) -> i32 {
+    pub fn purchase(&mut self, counter: i32, clickpower: &mut Clickpower) -> i32 {
         // Onetime purchase is already owned
         if self.onetime && self.owned == 1 {
             return 0;
         // Onetime purchase is not owned and player has enough points to purchase
         // or non-onetime purchase is not owned and player does not have enough points to purchase
         } else if self.cost <= counter {
+            // Applies the purchase
+            (self.func)(clickpower);
             self.owned += 1;
             return self.cost;
         } else {

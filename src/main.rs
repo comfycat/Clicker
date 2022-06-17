@@ -1,14 +1,18 @@
+use std::time::{Instant, Duration};
+
 use macroquad::prelude::*;
 
 use upgrade::Upgrade;
+use clickpower::Clickpower;
 
 mod upgrade;
+mod clickpower;
 
 #[macroquad::main("Clicker Game")]
 async fn main() {
     // Creates constants for button location
     let (button_x, button_y, button_r, button_color) = 
-        (screen_width() / 4.0, screen_height() / 2.0, 50.0, BLUE);
+        (screen_width() * 0.25, screen_height() * 0.5, 50.0, BLUE);
     // Creates constants for upgrade box
     let (upgrade_zone_x, upgrade_zone_y, upgrade_zone_w, upgrade_zone_h, upgrade_zone_color) =
         (screen_width() * 0.55, screen_height() * 0.1, screen_width() * 0.4, screen_height() * 0.8, GRAY);
@@ -25,15 +29,21 @@ async fn main() {
     let mut hidden = false;
     // Initalizes the counter variable for counting the player's points
     let mut counter = 0;
-    // Initalizes the clickpower variable for determining how many points the player gets on click
-    let mut clickpower = 1;
+    // Initalizes the clickpow variable as a struct for maximizing player value from upgrades
+    let mut clickpow = Clickpower::new(1, 1);
+    // Creates the reference for counting seconds with
+    let mut game_timer = Instant::now();
     
     // Creates a vector containing all of the upgrades
     let mut upgrades = vec![
-        // pub fn new(width: f32, height: f32, cost: i32, owned: i32, onetime: bool, text: &str) -> Upgrade
-        Upgrade::new(upgrade_w, upgrade_h, 5, 0, true, "Upgrade 1"),
-        Upgrade::new(upgrade_w, upgrade_h, 10, 0, true, "Upgrade 2"),
-        Upgrade::new(upgrade_w, upgrade_h, 10, 0, false, "Upgrade 3"),
+        // pub fn new(width: f32, height: f32, cost: i32, onetime: i32, owned: bool, text: &str) -> Upgrade
+        Upgrade::new(upgrade_w, upgrade_h, 5, 0, true, "Upgrade 1", Box::new(|clickpower: &mut Clickpower| {
+            clickpower.clickpow_add += 1;
+        })),
+        Upgrade::new(upgrade_w, upgrade_h, 30, 0, true, "Upgrade 2", Box::new(|clickpower: &mut Clickpower| {
+            clickpower.clickpow_mult *= 2;
+        })),
+        Upgrade::new(upgrade_w, upgrade_h, 10, 0, false, "Upgrade 3", Box::new(|i| {})),
         // ...
     ];
 
@@ -48,9 +58,15 @@ async fn main() {
         draw_circle(button_x, button_y, button_r, button_color);
         // If the player presses the main button, it gives them a point
         if mouse_pressed && mouse_in_circle(button_x, button_y, button_r) {
-            counter += clickpower;
+            counter += clickpow.get_clickpower();  
         }
         
+        // Checks to see if a second has passed for timing, if one has, resets the time since the last second was counted
+        // For adding income per second upgrades
+        if game_timer.elapsed() > Duration::from_secs(1) {
+            game_timer = Instant::now();
+        }
+
         // Upgrades Rendering
         // Checks if the upgrades are set to be visible, does not render if not
         if !hidden {
@@ -66,11 +82,12 @@ async fn main() {
                 // If the player clicks on an upgrade, it tries to purchase that upgrade
                 // Deducts the number of points spent, which is returned by the purchase function
                 if mouse_pressed && mouse_in_rectangle(upgrade_x, upgrade_y, upgrade_w, upgrade_h){
-                    let deduction = upgrade.purchase(counter);
+                    let deduction = upgrade.purchase(counter, &mut clickpow);
                     counter -= deduction;
                 }
             }
         }
+
         // Renders the hide upgrade button
         draw_rectangle(hide_upgrade_x, hide_upgrade_y, hide_upgrade_w, hide_upgrade_h, hide_upgrade_color);
         // Renders Show / Hide based off of hide status
@@ -88,8 +105,8 @@ async fn main() {
         // Old code: draw_rectangle(upgrade_zone_x + upgrade_zone_w * 0.05, upgrade_zone_y + upgrade_zone_y * 0.05, upgrade_w, upgrade_h, upgrade_color);
 
         // Displays the number of points that the player has
-        let text = format!("Counter: {}", counter);
-        draw_text(&text, 40.0, 70.0, 30.0, DARKGRAY);
+        let player_points = format!("Counter: {}", counter);
+        draw_text(&player_points, 40.0, 70.0, 30.0, DARKGRAY);
 
         // Waits until it's time to draw the next frame
         next_frame().await
