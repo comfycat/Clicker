@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 
-use crate::gamevalues::Gamevalues;
+use crate::{gamevalues::Gamevalues, scale_text_in_box};
 
 pub struct Upgrade {
     width: f32,
@@ -34,9 +34,11 @@ impl Upgrade {
         // If upgrade can be purchased multiple times, displays the number owned
         if !self.onetime {
             let output_text: String = format!("{}({})", &self.text, self.owned);
-            draw_text(&output_text, render_x + (self.width * 0.1), render_y + 30.0, 25.0, DARKGRAY);
+            draw_text(&output_text, render_x, render_y + 30.0, scale_text_in_box(
+                self.width, self.height, 0.0, &output_text), DARKGRAY);
         } else {
-            draw_text(&self.text, render_x + (self.width * 0.1), render_y + 30.0, 30.0, DARKGRAY);
+            draw_text(&self.text, render_x, render_y + 30.0, scale_text_in_box(
+                self.width, self.height, 0.0, &self.text), DARKGRAY);
         }
     }
 

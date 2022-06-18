@@ -22,7 +22,7 @@ async fn main() {
         (screen_width() * 0.85, screen_height() * 0.02, screen_width() * 0.1, screen_height() * 0.08, DARKGREEN, 
         screen_height() * 0.08, PURPLE);
     // Creates constants for inner upgrade size
-    let (upgrade_padding_x, upgrade_padding_y, upgrade_w, upgrade_h) = 
+    let (_upgrade_padding_x, upgrade_padding_y, upgrade_w, upgrade_h) = 
         (upgrade_zone_x + upgrade_zone_w * 0.05, upgrade_zone_h * 0.06, 
         upgrade_zone_w * 0.9, upgrade_zone_h * 0.1);
     // Initalizes the hidden variable for hiding the upgrades screen
@@ -98,9 +98,11 @@ async fn main() {
         // Renders Show / Hide based off of hide status
         // Uses the hide_upgrade_x value because text coordinates start at the left
         if hidden {     
-            draw_text("Show", hide_upgrade_x, hide_upgrade_text_y, 22.0, hide_upgrade_text_color);
+            draw_text("Show", hide_upgrade_x, hide_upgrade_text_y, scale_text_in_box(hide_upgrade_w,
+                 hide_upgrade_h, 0.0, "Show"), hide_upgrade_text_color);
         } else {
-            draw_text("Hide", hide_upgrade_x, hide_upgrade_text_y, 22.0, hide_upgrade_text_color);
+            draw_text("Hide", hide_upgrade_x, hide_upgrade_text_y, scale_text_in_box(hide_upgrade_w, 
+                hide_upgrade_h, 0.0, "Hide"), hide_upgrade_text_color);
         }
         // If the player clicks on the hide option, it hides the upgrade zone
         // Deducts the number of points spent, which is returned by the purchase function
@@ -136,4 +138,27 @@ fn mouse_in_rectangle(x: f32, y: f32, w: f32, h: f32) -> bool {
     let mouse_x_check = x < mouse_x && mouse_x < x + w;
     let mouse_y_check = y < mouse_y && mouse_y < y + h;
     return mouse_x_check && mouse_y_check;
+}
+
+// Checks for the maximum font size that will fit in the given box, and returns that size
+// box_w, box_h, y_offset: width, height, and y offset of box to test
+// input_text: text to be put inside of box
+pub fn scale_text_in_box(box_w: f32, box_h: f32, y_offset: f32, input_text: &str) -> f32 {
+    // Creates a local copy of the default font to pass in
+    let default_font = Font::default();
+    // Creates a TextDimensions of the passed in box to test
+    let box_dimensions = macroquad::text::TextDimensions {width: box_w, height: box_h, offset_y: y_offset};
+    // Creates the value which is incremented to make the text size bigger
+    let mut increment = 1;
+    // Creates the TextDimensions which is compared against box_dimensions and has its text size incremented
+    let mut test_dimensions = macroquad::text::measure_text(input_text, Some(default_font), increment, 1.0);
+    // Loops while the dimensions of test_dimensions is smaller than the box's dimensions
+    // Every loop, the dimensions of test_dimensions gets bigger until they are ~= the box's dimensions
+    while test_dimensions.width <= box_dimensions.width && test_dimensions.height <= box_dimensions.height {
+        // Makes the text size larger
+        increment += 1;
+        // Recreates test_dimensions with the larger text size
+        test_dimensions = macroquad::text::measure_text(input_text, Some(default_font), increment, 1.0);
+    }
+    return increment as f32;
 }
