@@ -4,9 +4,11 @@ use macroquad::prelude::*;
 
 use upgrade::Upgrade;
 use gamevalues::Gamevalues;
+use alchemy::Alchemy;
 
 mod upgrade;
 mod gamevalues;
+mod alchemy;
 
 #[macroquad::main("Clicker Game")]
 async fn main() {
@@ -25,27 +27,40 @@ async fn main() {
     let (_upgrade_padding_x, upgrade_padding_y, upgrade_w, upgrade_h) = 
         (upgrade_zone_x + upgrade_zone_w * 0.05, upgrade_zone_h * 0.06, 
         upgrade_zone_w * 0.9, upgrade_zone_h * 0.1);
+    // Creates constants for the alchemy icon, and alchemy zone
+    let (alchemy_icon_x, alchemy_icon_y, alchemy_icon_w, alchemy_icon_h, alchemy_icon_color) = 
+        (0.0, screen_height() * 0.9, screen_width() * 0.1, screen_height() * 0.1, BLACK);
+    let (alchemy_zone_x, alchemy_zone_y, alchemy_zone_w, alchemy_zone_h, alchemy_zone_color) = 
+        (0.0, screen_height() * 0.4, screen_width() * 0.5, screen_height() * 0.5, GRAY);
     // Initalizes the hidden variable for hiding the upgrades screen
     let mut hidden = false;
     // Initalizes the counter variable for counting the player's points
     let mut counter = 0;
+    // Initalizes the Alchemy variable as a struct
+    let gamealchemy = Alchemy::new(alchemy_zone_w, alchemy_zone_h, false, false, 0.0, 10.0);
     // Initalizes the gamevalues variable as a struct for maximizing player value from upgrades
     // TESTING Initalizing the persecond variable to determine points gained per second in the gamevalues struct
-    let mut gamevalues = Gamevalues::new(1, 1, 0);
+    let mut gamevalues = Gamevalues::new(1, 1, 0, gamealchemy);
     // Creates the reference for counting seconds with
     let mut game_timer = Instant::now();
     
     // Creates a vector containing all of the upgrades
     let mut upgrades = vec![
-        // pub fn new(width: f32, height: f32, cost: i32, onetime: i32, owned: bool, text: &str) -> Upgrade
-        Upgrade::new(upgrade_w, upgrade_h, 5, 0, true, "Upgrade 1", Box::new(|gamevalues: &mut Gamevalues| {
+        // pub fn new(width: f32, height: f32, cost: i32, owned: i32, onetime: bool, text: &str) -> Upgrade
+        Upgrade::new(upgrade_w, upgrade_h, 5, 0, true, "Increased Click Power", Box::new(|gamevalues: &mut Gamevalues| {
             gamevalues.clickpow_add += 1;
         })),
-        Upgrade::new(upgrade_w, upgrade_h, 30, 0, true, "Upgrade 2", Box::new(|gamevalues: &mut Gamevalues| {
+        Upgrade::new(upgrade_w, upgrade_h, 30, 0, true, "Double Click Power", Box::new(|gamevalues: &mut Gamevalues| {
             gamevalues.clickpow_mult *= 2;
         })),
-        Upgrade::new(upgrade_w, upgrade_h, 20, 0, false, "Upgrade 3", Box::new(|gamevalues: &mut Gamevalues| {
+        Upgrade::new(upgrade_w, upgrade_h, 20, 0, false, "Points Per Second", Box::new(|gamevalues: &mut Gamevalues| {
             gamevalues.persecond += 1;
+        })),
+        Upgrade::new(upgrade_w, upgrade_h, 1, 0, true, "Alchemy", Box::new(|gamevalues: &mut Gamevalues| {
+            gamevalues.alchemy.unlocked = true;
+        })),
+        Upgrade::new(upgrade_w, upgrade_h, 1, 0, false, "Water Bottle", Box::new(|gamevalues: &mut Gamevalues| {
+
         })),
         // ...
     ];
@@ -93,6 +108,26 @@ async fn main() {
             }
         }
 
+        // Alchemy Rendering
+        // Checks if Alchemy has been unlocked, if yes shows the alchemy icon
+        if gamevalues.alchemy.unlocked {
+            // Checks to see if the alchemy screen is currently opened
+            // If yes, renders the alchemy screen and the icon to close, if no, just renders the icon to open
+            if gamevalues.alchemy.visible {
+                // Renders the alchemy zone
+                draw_rectangle(alchemy_zone_x, alchemy_zone_y, alchemy_zone_w, alchemy_zone_h, alchemy_zone_color);
+                // Renders the water bar
+                gamevalues.alchemy.render_water(alchemy_zone_x, alchemy_zone_y);
+            }
+            
+            // Checks the mouse clicked on the alchemy icon to open the alchemy zone
+            if mouse_pressed && mouse_in_rectangle(alchemy_icon_x, alchemy_icon_y, alchemy_icon_w, alchemy_icon_h) {
+                gamevalues.alchemy.visible = !gamevalues.alchemy.visible;
+            }
+            // Creates the icon whether the alchemy screen is open or not
+            draw_rectangle(alchemy_icon_x, alchemy_icon_y, alchemy_icon_w, alchemy_icon_h, alchemy_icon_color);
+        }
+
         // Renders the hide upgrade button
         draw_rectangle(hide_upgrade_x, hide_upgrade_y, hide_upgrade_w, hide_upgrade_h, hide_upgrade_color);
         // Renders Show / Hide based off of hide status
@@ -104,6 +139,7 @@ async fn main() {
             draw_text("Hide", hide_upgrade_x, hide_upgrade_text_y, scale_text_in_box(hide_upgrade_w, 
                 hide_upgrade_h, 0.0, "Hide"), hide_upgrade_text_color);
         }
+
         // If the player clicks on the hide option, it hides the upgrade zone
         // Deducts the number of points spent, which is returned by the purchase function
         if mouse_pressed && mouse_in_rectangle(hide_upgrade_x, hide_upgrade_y, hide_upgrade_w, hide_upgrade_h) {
@@ -157,8 +193,8 @@ pub fn scale_text_in_box(box_w: f32, box_h: f32, y_offset: f32, input_text: &str
     while test_dimensions.width <= box_dimensions.width && test_dimensions.height <= box_dimensions.height {
         // Makes the text size larger
         increment += 1;
-        // Recreates test_dimensions with the larger text size
-        test_dimensions = macroquad::text::measure_text(input_text, Some(default_font), increment, 1.0);
+        // Recreates test_dimensions with the larger text size, one larger so the text is always returned smaller than the box it is in
+        test_dimensions = macroquad::text::measure_text(input_text, Some(default_font), increment + 1, 1.0);
     }
     return increment as f32;
 }

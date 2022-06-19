@@ -6,7 +6,7 @@ pub struct Upgrade {
     width: f32,
     height: f32,
     cost: i32,
-    owned: i32,
+    pub owned: i32,
     onetime: bool,
     text: String,
     func: Box<dyn Fn(&mut Gamevalues)>
