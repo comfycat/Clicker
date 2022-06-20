@@ -5,16 +5,18 @@ use macroquad::prelude::*;
 use upgrade::Upgrade;
 use gamevalues::Gamevalues;
 use alchemy::Alchemy;
+use alchemyitems::Alchemyitems;
 
 mod upgrade;
 mod gamevalues;
 mod alchemy;
+mod alchemyitems;
 
 #[macroquad::main("Clicker Game")]
 async fn main() {
     // Creates constants for button location
     let (button_x, button_y, button_r, button_color) = 
-        (screen_width() * 0.25, screen_height() * 0.5, 50.0, BLUE);
+        (screen_width() * 0.25, screen_height() * 0.55, 50.0, BLUE);
     // Creates constants for upgrade box
     let (upgrade_zone_x, upgrade_zone_y, upgrade_zone_w, upgrade_zone_h, upgrade_zone_color) =
         (screen_width() * 0.55, screen_height() * 0.1, screen_width() * 0.4, screen_height() * 0.8, GRAY);
@@ -36,8 +38,26 @@ async fn main() {
     let mut hidden = false;
     // Initalizes the counter variable for counting the player's points
     let mut counter = 0;
+    let alchemy_items = vec![
+        Alchemyitems::new("Water Bottle", 0, BLUE, Box::new(|| {
+            
+        })),
+        Alchemyitems::new("Water Bottle", 0, BEIGE, Box::new(|| {
+
+        })),
+        Alchemyitems::new("Water Bottle", 0, BROWN, Box::new(|| {
+            
+        })),
+        Alchemyitems::new("Water Bottle", 0, YELLOW, Box::new(|| {
+            
+        })),
+        Alchemyitems::new("Water Bottle", 0, RED, Box::new(|| {
+            
+        }))
+        ];
     // Initalizes the Alchemy variable as a struct
-    let gamealchemy = Alchemy::new(alchemy_zone_w, alchemy_zone_h, false, false, 0.0, 10.0);
+    let gamealchemy = Alchemy::new(alchemy_zone_w, alchemy_zone_h, false, false, 
+        0.0, 10.0, alchemy_items);
     // Initalizes the gamevalues variable as a struct for maximizing player value from upgrades
     // TESTING Initalizing the persecond variable to determine points gained per second in the gamevalues struct
     let mut gamevalues = Gamevalues::new(1, 1, 0, gamealchemy);
@@ -60,11 +80,11 @@ async fn main() {
             gamevalues.alchemy.unlocked = true;
         })),
         Upgrade::new(upgrade_w, upgrade_h, 1, 0, false, "Water Bottle", Box::new(|gamevalues: &mut Gamevalues| {
-
+            gamevalues.alchemy.items[0].owned += 1;
         })),
         // ...
     ];
-
+    
     // The main loop which creates the game
     loop {
         // Colors the background
@@ -75,8 +95,11 @@ async fn main() {
         // Creates the button the player presses to get points
         draw_circle(button_x, button_y, button_r, button_color);
         // If the player presses the main button, it gives them a point
-        if mouse_pressed && mouse_in_circle(button_x, button_y, button_r) {
-            counter += gamevalues.get_clickpower();  
+        // If the alchemy screen is open, the main button is hidden so clicking should not give any points
+        if !gamevalues.alchemy.visible {
+            if mouse_pressed && mouse_in_circle(button_x, button_y, button_r) {
+                counter += gamevalues.get_clickpower();  
+            }
         }
         
         // Checks to see if a second has passed for timing, if one has, resets the time since the last second was counted
@@ -118,6 +141,8 @@ async fn main() {
                 draw_rectangle(alchemy_zone_x, alchemy_zone_y, alchemy_zone_w, alchemy_zone_h, alchemy_zone_color);
                 // Renders the water bar
                 gamevalues.alchemy.render_water(alchemy_zone_x, alchemy_zone_y);
+                // Renders the alchemy items, passing upgrades to see if it got used
+                gamevalues.alchemy.render_items(alchemy_zone_x, alchemy_zone_y, mouse_pressed);
             }
             
             // Checks the mouse clicked on the alchemy icon to open the alchemy zone
@@ -150,7 +175,7 @@ async fn main() {
         // Displays the number of points that the player has
         let player_points = format!("Counter: {}", counter);
         draw_text(&player_points, 40.0, 70.0, 30.0, DARKGRAY);
-
+        
         // Waits until it's time to draw the next frame
         next_frame().await
     }
@@ -169,7 +194,7 @@ fn mouse_in_circle(x: f32, y: f32, r: f32) -> bool {
 // Returns `true` if the mouse is inside the given 
 // x, y: top left coordinates of rectangle
 // w, h: width and height of rectangle
-fn mouse_in_rectangle(x: f32, y: f32, w: f32, h: f32) -> bool {
+pub fn mouse_in_rectangle(x: f32, y: f32, w: f32, h: f32) -> bool {
     let (mouse_x, mouse_y) = mouse_position();
     let mouse_x_check = x < mouse_x && mouse_x < x + w;
     let mouse_y_check = y < mouse_y && mouse_y < y + h;
