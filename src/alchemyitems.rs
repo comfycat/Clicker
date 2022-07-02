@@ -1,14 +1,16 @@
 use::macroquad::prelude::*;
 
+use crate::{gamevalues::Gamevalues, upgrade::Upgrade};
+
 pub struct Alchemyitems {
     pub name: String,
     pub owned: i32,
     color: Color,
-    func: Box<dyn Fn()>
+    func: Box<dyn Fn(&mut Gamevalues)>
 }
 
 impl Alchemyitems {
-    pub fn new (name: &str, owned: i32, color: Color, func: Box<dyn Fn()>) -> Alchemyitems {
+    pub fn new (name: &str, owned: i32, color: Color, func: Box<dyn Fn(&mut Gamevalues)>) -> Alchemyitems {
         Alchemyitems {
             name: name.to_owned(),
             owned,
@@ -41,13 +43,21 @@ impl Alchemyitems {
     }
 
     // Operates the func field
-    pub fn use_item(&mut self) {
+    pub fn use_item(&mut self, gamevalues: &mut Gamevalues, upgrades: &mut Vec<Upgrade>) {
         // Checks to see if there is an item to use
         if self.owned > 0 {
             // Use the func field
-            (self.func)();
+            (self.func)(gamevalues);
             // Reduce the amount of the item owned by one
             self.owned -= 1;
+
+            // Find the corresponding upgrade by name
+            for (_i, upgrade) in upgrades.iter_mut().enumerate() {
+                // Reduces the amount of the corresponding upgrade owned by 1
+                if upgrade.text == self.name {
+                    upgrade.owned -= 1;
+                }
+            }
         }
     }
 }

@@ -39,48 +39,55 @@ async fn main() {
     // Initalizes the counter variable for counting the player's points
     let mut counter = 0;
     let alchemy_items = vec![
-        Alchemyitems::new("Water Bottle", 0, BLUE, Box::new(|| {
-            
+        Alchemyitems::new("Water Bottle", 0, BLUE, Box::new(|gamevalues: &mut Gamevalues| {
+            if gamevalues.water + 1.0 <= gamevalues.water_capacity {
+                gamevalues.water += 1.0;
+            } 
         })),
-        Alchemyitems::new("Water Bottle", 0, BEIGE, Box::new(|| {
+        Alchemyitems::new("Bag of Sand", 0, BEIGE, Box::new(|_gamevalues: &mut Gamevalues| {
 
         })),
-        Alchemyitems::new("Water Bottle", 0, BROWN, Box::new(|| {
+        Alchemyitems::new("Bottle of Fire", 0, RED, Box::new(|_gamevalues: &mut Gamevalues| {
             
         })),
-        Alchemyitems::new("Water Bottle", 0, YELLOW, Box::new(|| {
+        Alchemyitems::new("Water Bottle", 0, YELLOW, Box::new(|_gamevalues: &mut Gamevalues| {
             
         })),
-        Alchemyitems::new("Water Bottle", 0, RED, Box::new(|| {
+        Alchemyitems::new("Water Bottle", 0, BROWN, Box::new(|_gamevalues: &mut Gamevalues| {
             
         }))
         ];
     // Initalizes the Alchemy variable as a struct
-    let gamealchemy = Alchemy::new(alchemy_zone_w, alchemy_zone_h, false, false, 
-        0.0, 10.0, alchemy_items);
+    let mut gamealchemy = Alchemy::new(alchemy_zone_w, alchemy_zone_h, false, false, alchemy_items);
     // Initalizes the gamevalues variable as a struct for maximizing player value from upgrades
     // TESTING Initalizing the persecond variable to determine points gained per second in the gamevalues struct
-    let mut gamevalues = Gamevalues::new(1, 1, 0, gamealchemy);
+    let mut gamevalues = Gamevalues::new(1, 1, 0, 0.0, 10.0);
     // Creates the reference for counting seconds with
     let mut game_timer = Instant::now();
     
     // Creates a vector containing all of the upgrades
     let mut upgrades = vec![
         // pub fn new(width: f32, height: f32, cost: i32, owned: i32, onetime: bool, text: &str) -> Upgrade
-        Upgrade::new(upgrade_w, upgrade_h, 5, 0, true, "Increased Click Power", Box::new(|gamevalues: &mut Gamevalues| {
+        Upgrade::new(upgrade_w, upgrade_h, 5, 0, true, "Increased Click Power", Box::new(|gamevalues: &mut Gamevalues, _gamealchemy: &mut Alchemy| {
             gamevalues.clickpow_add += 1;
         })),
-        Upgrade::new(upgrade_w, upgrade_h, 30, 0, true, "Double Click Power", Box::new(|gamevalues: &mut Gamevalues| {
+        Upgrade::new(upgrade_w, upgrade_h, 30, 0, true, "Double Click Power", Box::new(|gamevalues: &mut Gamevalues, _gamealchemy: &mut Alchemy| {
             gamevalues.clickpow_mult *= 2;
         })),
-        Upgrade::new(upgrade_w, upgrade_h, 20, 0, false, "Points Per Second", Box::new(|gamevalues: &mut Gamevalues| {
+        Upgrade::new(upgrade_w, upgrade_h, 20, 0, false, "Points Per Second", Box::new(|gamevalues: &mut Gamevalues, _gamealchemy: &mut Alchemy| {
             gamevalues.persecond += 1;
         })),
-        Upgrade::new(upgrade_w, upgrade_h, 1, 0, true, "Alchemy", Box::new(|gamevalues: &mut Gamevalues| {
-            gamevalues.alchemy.unlocked = true;
+        Upgrade::new(upgrade_w, upgrade_h, 1, 0, true, "Alchemy", Box::new(|_gamevalues: &mut Gamevalues, gamealchemy: &mut Alchemy| {
+            gamealchemy.unlocked = true;
         })),
-        Upgrade::new(upgrade_w, upgrade_h, 1, 0, false, "Water Bottle", Box::new(|gamevalues: &mut Gamevalues| {
-            gamevalues.alchemy.items[0].owned += 1;
+        Upgrade::new(upgrade_w, upgrade_h, 1, 0, false, "Water Bottle", Box::new(|_gamevalues: &mut Gamevalues, gamealchemy: &mut Alchemy| {
+            gamealchemy.items[0].owned += 1;
+        })),
+        Upgrade::new(upgrade_w, upgrade_h, 1, 0, false, "Bag of Sand", Box::new(|_gamevalues: &mut Gamevalues, gamealchemy: &mut Alchemy| {
+            gamealchemy.items[1].owned += 1;
+        })),
+        Upgrade::new(upgrade_w, upgrade_h, 1, 0, false, "Bottle of Fire", Box::new(|_gamevalues: &mut Gamevalues, gamealchemy: &mut Alchemy| {
+            gamealchemy.items[2].owned += 1;
         })),
         // ...
     ];
@@ -96,7 +103,7 @@ async fn main() {
         draw_circle(button_x, button_y, button_r, button_color);
         // If the player presses the main button, it gives them a point
         // If the alchemy screen is open, the main button is hidden so clicking should not give any points
-        if !gamevalues.alchemy.visible {
+        if !gamealchemy.visible {
             if mouse_pressed && mouse_in_circle(button_x, button_y, button_r) {
                 counter += gamevalues.get_clickpower();  
             }
@@ -125,7 +132,7 @@ async fn main() {
                 // If the player clicks on an upgrade, it tries to purchase that upgrade
                 // Deducts the number of points spent, which is returned by the purchase function
                 if mouse_pressed && mouse_in_rectangle(upgrade_x, upgrade_y, upgrade_w, upgrade_h){
-                    let deduction = upgrade.purchase(counter, &mut gamevalues);
+                    let deduction = upgrade.purchase(counter, &mut gamevalues, &mut gamealchemy);
                     counter -= deduction;
                 }
             }
@@ -133,21 +140,23 @@ async fn main() {
 
         // Alchemy Rendering
         // Checks if Alchemy has been unlocked, if yes shows the alchemy icon
-        if gamevalues.alchemy.unlocked {
+        if gamealchemy.unlocked {
             // Checks to see if the alchemy screen is currently opened
             // If yes, renders the alchemy screen and the icon to close, if no, just renders the icon to open
-            if gamevalues.alchemy.visible {
+            if gamealchemy.visible {
                 // Renders the alchemy zone
                 draw_rectangle(alchemy_zone_x, alchemy_zone_y, alchemy_zone_w, alchemy_zone_h, alchemy_zone_color);
                 // Renders the water bar
-                gamevalues.alchemy.render_water(alchemy_zone_x, alchemy_zone_y);
-                // Renders the alchemy items, passing upgrades to see if it got used
-                gamevalues.alchemy.render_items(alchemy_zone_x, alchemy_zone_y, mouse_pressed);
+                gamealchemy.render_water(alchemy_zone_x, alchemy_zone_y, &mut gamevalues);
+                // Renders the alchemy items, passing mouse_pressed to see if it got used
+                // Also passes the upgrades vector to reduce the amount owned if the upgrade got purchased
+                gamealchemy.render_items(alchemy_zone_x, alchemy_zone_y, 
+                    mouse_pressed, &mut gamevalues, &mut upgrades);
             }
             
             // Checks the mouse clicked on the alchemy icon to open the alchemy zone
             if mouse_pressed && mouse_in_rectangle(alchemy_icon_x, alchemy_icon_y, alchemy_icon_w, alchemy_icon_h) {
-                gamevalues.alchemy.visible = !gamevalues.alchemy.visible;
+                gamealchemy.visible = !gamealchemy.visible;
             }
             // Creates the icon whether the alchemy screen is open or not
             draw_rectangle(alchemy_icon_x, alchemy_icon_y, alchemy_icon_w, alchemy_icon_h, alchemy_icon_color);

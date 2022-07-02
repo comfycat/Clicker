@@ -1,43 +1,40 @@
 use macroquad::prelude::*;
-use crate::{alchemyitems::Alchemyitems, mouse_in_rectangle};
+use crate::{alchemyitems::Alchemyitems, mouse_in_rectangle, gamevalues::Gamevalues, upgrade::Upgrade};
 
 pub struct Alchemy {
     width: f32,
     height: f32,
     pub unlocked: bool,
     pub visible: bool,
-    pub water: f32,
-    pub water_capacity: f32,
     pub items: Vec<Alchemyitems>
 }
 
 impl Alchemy {
-    pub fn new(width: f32, height: f32, unlocked: bool, visible: bool, water: f32, water_capacity: f32, items: Vec<Alchemyitems>) -> Alchemy {
+    pub fn new(width: f32, height: f32, unlocked: bool, visible: bool, items: Vec<Alchemyitems>) -> Alchemy {
         Alchemy {
             width,
             height,
             unlocked,
             visible,
-            water,  
-            water_capacity,
             items
         }
     }
 
     // Renders the water bar
-    pub fn render_water(&self, render_x: f32, render_y: f32) {
+    pub fn render_water(&self, render_x: f32, render_y: f32, gamevalues: &mut Gamevalues) {
         // Renders the greyed out bar for the maximum capacity
         draw_rectangle(render_x + self.width * 0.05, render_y + self.height * 0.1, self.width * 0.9, 
             self.height * 0.1, DARKBLUE);
         // Renders the bar relative to the amount of water owned
-        let water_percent: f32 = self.water / self.water_capacity;
+        let water_percent: f32 = gamevalues.water / gamevalues.water_capacity;
         draw_rectangle(render_x + self.width * 0.05, render_y + self.height * 0.1, self.width * 0.9 * water_percent, 
             self.height * 0.1, BLUE);
     }
 
     // Renders the owned items 
     // Currently can only handle up to 12 items, will break otherwise
-    pub fn render_items(&mut self, render_x: f32, mut render_y: f32, mouse_pressed: bool) {
+    pub fn render_items(&mut self, render_x: f32, mut render_y: f32, mouse_pressed: bool, 
+        gamevalues: &mut Gamevalues, upgrades: &mut Vec<Upgrade>) {
         // Adds half of the self.height value to change render_y to be equal to
         // the top of the alchemy items zone
         render_y += self.height * 0.5;
@@ -79,7 +76,7 @@ impl Alchemy {
 
             // Checks if the item got clicked on, and if so runs its value
             if mouse_pressed && mouse_in_rectangle(items_x, items_y, side, side) {
-                item.use_item();
+                item.use_item(gamevalues, upgrades);
             }
         }
     }
