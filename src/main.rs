@@ -14,30 +14,34 @@ mod alchemyitems;
 
 #[macroquad::main("Clicker Game")]
 async fn main() {
-    // Creates constants for button location
+    // Creates constants for counter display
+    let (_counter_x, _counter_y, counter_w, counter_h) =
+        (0.0, 0.0, screen_width() * 0.375, screen_height() * 0.125);
+    // Creates constants for navigation buttons
+    let (navigation_button_x, _navigation_button_y, navigation_button_w, navigation_button_h, navigation_button_text_color) =
+        (screen_width() * 0.375, 0.0, screen_width() * 0.125, screen_height() * 0.125, PURPLE);
+    // Creates the text boxes for navigation buttons
+    let mut navigation_text = vec!["Fishing", "Upgrades", "Alchemy", "Stars", "Pets"];
+    // Creates constants for the top and bottom halves of main sections
+    let (_left_main_section_x, right_main_section_x, top_main_section_y, bottom_main_section_y, main_section_w, main_section_h) =
+        (0.0, screen_width() * 0.5, screen_height() * 0.125, screen_height() * 0.5625, screen_width() * 0.5, screen_height() * 0.4375);
+    // Creates a separate constant for the upgrade zone height as currently it is twice as large as others, also does color
+    let (upgrade_zone_h, upgrade_zone_color) = (screen_height() * 0.875, GRAY);
+    // Creates constants for clicker button location / size
     let (button_x, button_y, button_r, button_color) = 
-        (screen_width() * 0.25, screen_height() * 0.55, 50.0, BLUE);
-    // Creates constants for upgrade box
-    let (upgrade_zone_x, upgrade_zone_y, upgrade_zone_w, upgrade_zone_h, upgrade_zone_color) =
-        (screen_width() * 0.55, screen_height() * 0.1, screen_width() * 0.4, screen_height() * 0.8, GRAY);
-    // Creates constants for hide upgrades box 
-    let (hide_upgrade_x, hide_upgrade_y, hide_upgrade_w, hide_upgrade_h, hide_upgrade_color, 
-        hide_upgrade_text_y, hide_upgrade_text_color) =
-        (screen_width() * 0.85, screen_height() * 0.02, screen_width() * 0.1, screen_height() * 0.08, DARKGREEN, 
-        screen_height() * 0.08, PURPLE);
+        (screen_width() * 0.25, screen_height() * 0.3125, screen_height() * 0.125, BLUE);
     // Creates constants for inner upgrade size
     let (_upgrade_padding_x, upgrade_padding_y, upgrade_w, upgrade_h) = 
-        (upgrade_zone_x + upgrade_zone_w * 0.05, upgrade_zone_h * 0.06, 
-        upgrade_zone_w * 0.9, upgrade_zone_h * 0.1);
-    // Creates constants for the alchemy icon, and alchemy zone
-    let (alchemy_icon_x, alchemy_icon_y, alchemy_icon_w, alchemy_icon_h, alchemy_icon_color) = 
-        (0.0, screen_height() * 0.9, screen_width() * 0.1, screen_height() * 0.1, BLACK);
-    let (alchemy_zone_x, alchemy_zone_y, alchemy_zone_w, alchemy_zone_h, alchemy_zone_color) = 
-        (0.0, screen_height() * 0.4, screen_width() * 0.5, screen_height() * 0.5, GRAY);
-    // Initalizes the hidden variable for hiding the upgrades screen
-    let mut hidden = false;
+        (right_main_section_x + main_section_w * 0.05, upgrade_zone_h * 0.06, 
+        main_section_w * 0.9, upgrade_zone_h * 0.1);
+
+    // Initalizes the current_render variable for determining which screen is rendered
+    let mut current_render = "Fishing";
+
     // Initalizes the counter variable for counting the player's points
     let mut counter = 0;
+
+    // Creates the vector containing all alchemy items
     let alchemy_items = vec![
         Alchemyitems::new("Water Bottle", 0, BLUE, Box::new(|gamevalues: &mut Gamevalues| {
             if gamevalues.water + 1.0 <= gamevalues.water_capacity {
@@ -50,18 +54,25 @@ async fn main() {
         Alchemyitems::new("Bottle of Fire", 0, RED, Box::new(|_gamevalues: &mut Gamevalues| {
             
         })),
-        Alchemyitems::new("Water Bottle", 0, YELLOW, Box::new(|_gamevalues: &mut Gamevalues| {
+        Alchemyitems::new("Dandelion Petals", 0, YELLOW, Box::new(|_gamevalues: &mut Gamevalues| {
             
         })),
-        Alchemyitems::new("Water Bottle", 0, BROWN, Box::new(|_gamevalues: &mut Gamevalues| {
+        Alchemyitems::new("Coffee Grounds", 0, BROWN, Box::new(|_gamevalues: &mut Gamevalues| {
+            
+        })),
+        Alchemyitems::new("Piece of Soul", 0, PURPLE, Box::new(|_gamevalues: &mut Gamevalues| {
+            
+        })),
+        Alchemyitems::new("Concrete Powder", 0, GRAY, Box::new(|_gamevalues: &mut Gamevalues| {
             
         }))
-        ];
+    ];
     // Initalizes the Alchemy variable as a struct
-    let mut gamealchemy = Alchemy::new(alchemy_zone_w, alchemy_zone_h, false, false, alchemy_items);
+    // Passes the width and height of a main section for use in calculations
+    let mut gamealchemy = Alchemy::new(main_section_w, main_section_h, false, alchemy_items);
     // Initalizes the gamevalues variable as a struct for maximizing player value from upgrades
     // TESTING Initalizing the persecond variable to determine points gained per second in the gamevalues struct
-    let mut gamevalues = Gamevalues::new(1, 1, 0, 0.0, 10.0);
+    let mut gamevalues = Gamevalues::new(1, 1, 0, 0.0, 10.0, 0);
     // Creates the reference for counting seconds with
     let mut game_timer = Instant::now();
     
@@ -80,6 +91,7 @@ async fn main() {
         Upgrade::new(upgrade_w, upgrade_h, 1, 0, true, "Alchemy", Box::new(|_gamevalues: &mut Gamevalues, gamealchemy: &mut Alchemy| {
             gamealchemy.unlocked = true;
         })),
+        /* 
         Upgrade::new(upgrade_w, upgrade_h, 1, 0, false, "Water Bottle", Box::new(|_gamevalues: &mut Gamevalues, gamealchemy: &mut Alchemy| {
             gamealchemy.items[0].owned += 1;
         })),
@@ -89,26 +101,28 @@ async fn main() {
         Upgrade::new(upgrade_w, upgrade_h, 1, 0, false, "Bottle of Fire", Box::new(|_gamevalues: &mut Gamevalues, gamealchemy: &mut Alchemy| {
             gamealchemy.items[2].owned += 1;
         })),
+        */
         // ...
     ];
     
+    // Creates the background image
+    /*
+    let _background = Texture2D::from_file_with_format (
+        include_bytes!(".\\background.png"),
+        ImageFormat::from_extension("png"),
+        );
+    // Sets the background to be an image
+    draw_texture(background, 0.0, 0.0, WHITE);
+    */
+
     // The main loop which creates the game
     loop {
         // Colors the background
         clear_background(PINK);
+
         // Checks if the mouse was pressed on this frame
         let mouse_pressed = is_mouse_button_pressed(MouseButton::Left);
 
-        // Creates the button the player presses to get points
-        draw_circle(button_x, button_y, button_r, button_color);
-        // If the player presses the main button, it gives them a point
-        // If the alchemy screen is open, the main button is hidden so clicking should not give any points
-        if !gamealchemy.visible {
-            if mouse_pressed && mouse_in_circle(button_x, button_y, button_r) {
-                counter += gamevalues.get_clickpower();  
-            }
-        }
-        
         // Checks to see if a second has passed for timing, if one has, resets the time since the last second was counted
         // For adding income per second upgrades
         if game_timer.elapsed() > Duration::from_secs(1) {
@@ -117,73 +131,91 @@ async fn main() {
             game_timer = Instant::now();
         }
 
-        // Upgrades Rendering
-        // Checks if the upgrades are set to be visible, does not render if not
-        if !hidden {
-            // Creates the area for upgrades
-            draw_rectangle(upgrade_zone_x, upgrade_zone_y, upgrade_zone_w, upgrade_zone_h, upgrade_zone_color);
-            // Renders the upgrades, and checks for purchases
-            for (i, upgrade) in upgrades.iter_mut().enumerate() {
-                // Factors out each upgrade's x, y, width, and height for use in the mouse_in_rectangle function
-                let upgrade_x = upgrade_zone_x + upgrade_zone_w * 0.05;
-                let upgrade_y = upgrade_zone_y + upgrade_padding_y * (2 * i + 1) as f32;
-                // Renders the upgrades
-                upgrade.render(upgrade_x, upgrade_y);
-                // If the player clicks on an upgrade, it tries to purchase that upgrade
-                // Deducts the number of points spent, which is returned by the purchase function
-                if mouse_pressed && mouse_in_rectangle(upgrade_x, upgrade_y, upgrade_w, upgrade_h){
-                    let deduction = upgrade.purchase(counter, &mut gamevalues, &mut gamealchemy);
-                    counter -= deduction;
+        //
+        //
+        // RENDERING
+        //
+        //
+        // Checks the current rendering screen, and renders the proper items
+        match current_render {
+            // Clicker State
+            "Fishing" => {
+                // Creates the button the player presses to get points
+                // This may be moved to another tab in the future
+                draw_circle(button_x, button_y, button_r, button_color);
+                // If the player presses the main button, it gives them a point
+                if mouse_pressed && mouse_in_circle(button_x, button_y, button_r) {
+                    counter += gamevalues.get_clickpower();  
                 }
             }
+            // Clicker and Upgrades State
+            // Creates the area for upgrades
+            "Upgrades" => {
+                // Renders the upgrade zone inside of which upgrades go
+                draw_rectangle(right_main_section_x, top_main_section_y, main_section_w, upgrade_zone_h, upgrade_zone_color);
+
+                // Creates the zone to show current Per Second upgrades, to be added in the future
+                draw_rectangle(_left_main_section_x, bottom_main_section_y, main_section_w, main_section_h, BLUE);
+                // Renders the upgrades, and checks for purchases
+                for (i, upgrade) in upgrades.iter_mut().enumerate() {
+                    // Factors out each upgrade's x, y, width, and height for use in the mouse_in_rectangle function
+                    let upgrade_x = right_main_section_x + main_section_w * 0.05;
+                    let upgrade_y = top_main_section_y + upgrade_padding_y * (2 * i + 1) as f32;
+                    // Renders the upgrades
+                    upgrade.render(upgrade_x, upgrade_y);
+                    // If the player clicks on an upgrade, it tries to purchase that upgrade
+                    // Deducts the number of points spent, which is returned by the purchase function
+                    if mouse_pressed && mouse_in_rectangle(upgrade_x, upgrade_y, upgrade_w, upgrade_h) {
+                        let deduction = upgrade.purchase(counter, &mut gamevalues, &mut gamealchemy);
+                        counter -= deduction;
+                    }
+                }
+            }
+
+            // Alchemy State
+            "Alchemy" => {
+                // Makes sure that the alchemy upgrade has been purchased
+                if gamealchemy.unlocked {
+                    // Renders the water zone
+                    draw_rectangle(_left_main_section_x, bottom_main_section_y, main_section_w, main_section_h, GRAY);
+                    // Renders the water bar
+                    gamealchemy.render_water(_left_main_section_x, bottom_main_section_y, &mut gamevalues);
+                    // Renders the alchemy items, passing mouse_pressed to see if it got used
+                    // Also passes the upgrades vector to reduce the amount owned if the upgrade got purchased
+                    gamealchemy.render_items(right_main_section_x, bottom_main_section_y,
+                        mouse_pressed, &mut gamevalues, &mut upgrades);
+                }
+            }
+            "Stars" => {}
+            "Pets" => {}
+            _ => {}
         }
 
-        // Alchemy Rendering
-        // Checks if Alchemy has been unlocked, if yes shows the alchemy icon
-        if gamealchemy.unlocked {
-            // Checks to see if the alchemy screen is currently opened
-            // If yes, renders the alchemy screen and the icon to close, if no, just renders the icon to open
-            if gamealchemy.visible {
-                // Renders the alchemy zone
-                draw_rectangle(alchemy_zone_x, alchemy_zone_y, alchemy_zone_w, alchemy_zone_h, alchemy_zone_color);
-                // Renders the water bar
-                gamealchemy.render_water(alchemy_zone_x, alchemy_zone_y, &mut gamevalues);
-                // Renders the alchemy items, passing mouse_pressed to see if it got used
-                // Also passes the upgrades vector to reduce the amount owned if the upgrade got purchased
-                gamealchemy.render_items(alchemy_zone_x, alchemy_zone_y, 
-                    mouse_pressed, &mut gamevalues, &mut upgrades);
-            }
+        // Renders the Navigation buttons at the top
+        for (i, text) in navigation_text.iter_mut().enumerate() {
+            // Establishes the x location for the button
+            let current_navigation_button_x = navigation_button_x + navigation_button_w * i as f32;
+            // Creates the background for the button
+            draw_rectangle(current_navigation_button_x, _navigation_button_y, navigation_button_w, 
+                navigation_button_h, DARKGREEN);
+            // Creates the text inside of the background
+            draw_text(text, current_navigation_button_x, _navigation_button_y + navigation_button_h * 0.5, 
+                scale_text_in_box(navigation_button_w,navigation_button_h, 0.0, text), navigation_button_text_color);
             
-            // Checks the mouse clicked on the alchemy icon to open the alchemy zone
-            if mouse_pressed && mouse_in_rectangle(alchemy_icon_x, alchemy_icon_y, alchemy_icon_w, alchemy_icon_h) {
-                gamealchemy.visible = !gamealchemy.visible;
+            if mouse_pressed && mouse_in_rectangle(current_navigation_button_x, _navigation_button_y, navigation_button_w, 
+                navigation_button_h) {
+                current_render = text;
             }
-            // Creates the icon whether the alchemy screen is open or not
-            draw_rectangle(alchemy_icon_x, alchemy_icon_y, alchemy_icon_w, alchemy_icon_h, alchemy_icon_color);
         }
-
-        // Renders the hide upgrade button
-        draw_rectangle(hide_upgrade_x, hide_upgrade_y, hide_upgrade_w, hide_upgrade_h, hide_upgrade_color);
-        // Renders Show / Hide based off of hide status
-        // Uses the hide_upgrade_x value because text coordinates start at the left
-        if hidden {     
-            draw_text("Show", hide_upgrade_x, hide_upgrade_text_y, scale_text_in_box(hide_upgrade_w,
-                 hide_upgrade_h, 0.0, "Show"), hide_upgrade_text_color);
-        } else {
-            draw_text("Hide", hide_upgrade_x, hide_upgrade_text_y, scale_text_in_box(hide_upgrade_w, 
-                hide_upgrade_h, 0.0, "Hide"), hide_upgrade_text_color);
-        }
-
-        // If the player clicks on the hide option, it hides the upgrade zone
-        // Deducts the number of points spent, which is returned by the purchase function
-        if mouse_pressed && mouse_in_rectangle(hide_upgrade_x, hide_upgrade_y, hide_upgrade_w, hide_upgrade_h) {
-            hidden = !hidden;
-        }
+ 
         // Old code: draw_rectangle(upgrade_zone_x + upgrade_zone_w * 0.05, upgrade_zone_y + upgrade_zone_y * 0.05, upgrade_w, upgrade_h, upgrade_color);
 
+        // Draws a box to improve the looks of the points display
+        draw_rectangle(_counter_x, _counter_y, counter_w, counter_h, BLACK);
         // Displays the number of points that the player has
         let player_points = format!("Counter: {}", counter);
-        draw_text(&player_points, 40.0, 70.0, 30.0, DARKGRAY);
+        draw_text(&player_points, _counter_x, _counter_y + counter_h * 0.75, 
+            scale_text_in_box(counter_w, counter_h, 0.0, &player_points), PINK);
         
         // Waits until it's time to draw the next frame
         next_frame().await
@@ -232,3 +264,11 @@ pub fn scale_text_in_box(box_w: f32, box_h: f32, y_offset: f32, input_text: &str
     }
     return increment as f32;
 }
+
+
+
+/* let test_texture = Texture2D::from_file_with_format (
+        include_bytes!(".\\banana.png"),
+        ImageFormat::from_extension("png"),
+        );
+ */
