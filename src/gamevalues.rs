@@ -1,17 +1,19 @@
 use macroquad::prelude::*;
 
 pub struct Gamevalues {
+    pub counter: i32,
     pub clickpow_add: i32,
     pub clickpow_mult: i32,
     pub persecond: i32,
     pub water: f32,
     pub water_capacity: f32,
-    pub alchemy_selected: i32
+    pub alchemy_selected: usize
 }
 
 impl Gamevalues {
-    pub fn new(clickpow_add: i32, clickpow_mult: i32, persecond: i32, water: f32, water_capacity: f32, alchemy_selected: i32) -> Gamevalues {
+    pub fn new(counter: i32, clickpow_add: i32, clickpow_mult: i32, persecond: i32, water: f32, water_capacity: f32, alchemy_selected: usize) -> Gamevalues {
         Gamevalues {
+            counter,
             clickpow_add,
             clickpow_mult,
             persecond,

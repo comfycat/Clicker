@@ -38,41 +38,41 @@ async fn main() {
     // Initalizes the current_render variable for determining which screen is rendered
     let mut current_render = "Fishing";
 
-    // Initalizes the counter variable for counting the player's points
-    let mut counter = 0;
-
     // Creates the vector containing all alchemy items
     let alchemy_items = vec![
-        Alchemyitems::new("Water Bottle", 0, BLUE, Box::new(|gamevalues: &mut Gamevalues| {
+        Alchemyitems::new("Water Bottle", 1, 0, BLUE, Box::new(|gamevalues: &mut Gamevalues| {
             if gamevalues.water + 1.0 <= gamevalues.water_capacity {
                 gamevalues.water += 1.0;
             } 
         })),
-        Alchemyitems::new("Bag of Sand", 0, BEIGE, Box::new(|_gamevalues: &mut Gamevalues| {
+        Alchemyitems::new("Bag of Sand", 1, 0, BEIGE, Box::new(|_gamevalues: &mut Gamevalues| {
 
         })),
-        Alchemyitems::new("Bottle of Fire", 0, RED, Box::new(|_gamevalues: &mut Gamevalues| {
+        Alchemyitems::new("Bottle of Fire", 1, 0, RED, Box::new(|_gamevalues: &mut Gamevalues| {
             
         })),
-        Alchemyitems::new("Dandelion Petals", 0, YELLOW, Box::new(|_gamevalues: &mut Gamevalues| {
+        Alchemyitems::new("Dandelion Petals", 1, 0, YELLOW, Box::new(|_gamevalues: &mut Gamevalues| {
             
         })),
-        Alchemyitems::new("Coffee Grounds", 0, BROWN, Box::new(|_gamevalues: &mut Gamevalues| {
+        Alchemyitems::new("Coffee Grounds", 1, 0, BROWN, Box::new(|_gamevalues: &mut Gamevalues| {
             
         })),
-        Alchemyitems::new("Piece of Soul", 0, PURPLE, Box::new(|_gamevalues: &mut Gamevalues| {
+        Alchemyitems::new("Piece of Soul", 5, 0, PURPLE, Box::new(|_gamevalues: &mut Gamevalues| {
             
         })),
-        Alchemyitems::new("Concrete Powder", 0, GRAY, Box::new(|_gamevalues: &mut Gamevalues| {
+        Alchemyitems::new("Concrete Powder", 1, 0, GRAY, Box::new(|_gamevalues: &mut Gamevalues| {
+            
+        })),
+        Alchemyitems::new("Brown Boot", 1, 0, BROWN, Box::new(|_gamevalues: &mut Gamevalues| {
             
         }))
     ];
     // Initalizes the Alchemy variable as a struct
     // Passes the width and height of a main section for use in calculations
-    let mut gamealchemy = Alchemy::new(main_section_w, main_section_h, false, alchemy_items);
+    let mut gamealchemy = Alchemy::new(main_section_w, main_section_h, false, alchemy_items, vec![]);
     // Initalizes the gamevalues variable as a struct for maximizing player value from upgrades
     // TESTING Initalizing the persecond variable to determine points gained per second in the gamevalues struct
-    let mut gamevalues = Gamevalues::new(1, 1, 0, 0.0, 10.0, 0);
+    let mut gamevalues = Gamevalues::new(0, 1, 1, 0, 0.0, 10.0, 0);
     // Creates the reference for counting seconds with
     let mut game_timer = Instant::now();
     
@@ -127,7 +127,7 @@ async fn main() {
         // For adding income per second upgrades
         if game_timer.elapsed() > Duration::from_secs(1) {
             // Adds the income per second in the Gamevalues struct
-            counter += gamevalues.persecond;
+            gamevalues.counter += gamevalues.persecond;
             game_timer = Instant::now();
         }
 
@@ -145,7 +145,7 @@ async fn main() {
                 draw_circle(button_x, button_y, button_r, button_color);
                 // If the player presses the main button, it gives them a point
                 if mouse_pressed && mouse_in_circle(button_x, button_y, button_r) {
-                    counter += gamevalues.get_clickpower();  
+                    gamevalues.counter += gamevalues.get_clickpower();  
                 }
             }
             // Clicker and Upgrades State
@@ -166,8 +166,8 @@ async fn main() {
                     // If the player clicks on an upgrade, it tries to purchase that upgrade
                     // Deducts the number of points spent, which is returned by the purchase function
                     if mouse_pressed && mouse_in_rectangle(upgrade_x, upgrade_y, upgrade_w, upgrade_h) {
-                        let deduction = upgrade.purchase(counter, &mut gamevalues, &mut gamealchemy);
-                        counter -= deduction;
+                        let deduction = upgrade.purchase(&mut gamevalues, &mut gamealchemy);
+                        gamevalues.counter -= deduction;
                     }
                 }
             }
@@ -176,14 +176,18 @@ async fn main() {
             "Alchemy" => {
                 // Makes sure that the alchemy upgrade has been purchased
                 if gamealchemy.unlocked {
-                    // Renders the water zone
-                    draw_rectangle(_left_main_section_x, bottom_main_section_y, main_section_w, main_section_h, GRAY);
-                    // Renders the water bar
+                    // Renders the cauldron items
+                    gamealchemy.render_alchemy_preview(_left_main_section_x, top_main_section_y, 
+                        mouse_pressed, &mut gamevalues);
+                    // Renders the water section
                     gamealchemy.render_water(_left_main_section_x, bottom_main_section_y, &mut gamevalues);
-                    // Renders the alchemy items, passing mouse_pressed to see if it got used
+                    // Renders the alchemy item descrption box, passing mouse_pressed to buy / use items
+                    gamealchemy.render_item_info(right_main_section_x, top_main_section_y, mouse_pressed, &mut gamevalues);
+                    // Renders the alchemy item inventory, passing mouse_pressed to see if it got used
+                    // mouse_pressed will be to select a different item
                     // Also passes the upgrades vector to reduce the amount owned if the upgrade got purchased
-                    gamealchemy.render_items(right_main_section_x, bottom_main_section_y,
-                        mouse_pressed, &mut gamevalues, &mut upgrades);
+                    gamealchemy.render_item_inventory(right_main_section_x, bottom_main_section_y,
+                        mouse_pressed, &mut gamevalues);
                 }
             }
             "Stars" => {}
@@ -213,7 +217,7 @@ async fn main() {
         // Draws a box to improve the looks of the points display
         draw_rectangle(_counter_x, _counter_y, counter_w, counter_h, BLACK);
         // Displays the number of points that the player has
-        let player_points = format!("Counter: {}", counter);
+        let player_points = format!("Counter: {}", gamevalues.counter);
         draw_text(&player_points, _counter_x, _counter_y + counter_h * 0.75, 
             scale_text_in_box(counter_w, counter_h, 0.0, &player_points), PINK);
         
@@ -264,7 +268,6 @@ pub fn scale_text_in_box(box_w: f32, box_h: f32, y_offset: f32, input_text: &str
     }
     return increment as f32;
 }
-
 
 
 /* let test_texture = Texture2D::from_file_with_format (

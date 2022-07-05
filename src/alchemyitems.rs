@@ -4,15 +4,17 @@ use crate::{gamevalues::Gamevalues, upgrade::Upgrade};
 
 pub struct Alchemyitems {
     pub name: String,
+    pub cost: i32,
     pub owned: i32,
     color: Color,
     func: Box<dyn Fn(&mut Gamevalues)>
 }
 
 impl Alchemyitems {
-    pub fn new (name: &str, owned: i32, color: Color, func: Box<dyn Fn(&mut Gamevalues)>) -> Alchemyitems {
+    pub fn new (name: &str, cost: i32, owned: i32, color: Color, func: Box<dyn Fn(&mut Gamevalues)>) -> Alchemyitems {
         Alchemyitems {
             name: name.to_owned(),
+            cost,
             owned,
             color,
             func

@@ -45,13 +45,13 @@ impl Upgrade {
     // Attempts to purchase the upgrade
     // - Respects onetime property
     // - Verifies player has enough points to afford
-    pub fn purchase(&mut self, counter: i32, gamevalues: &mut Gamevalues, gamealchemy: &mut Alchemy) -> i32 {
+    pub fn purchase(&mut self, gamevalues: &mut Gamevalues, gamealchemy: &mut Alchemy) -> i32 {
         // Onetime purchase is already owned
         if self.onetime && self.owned == 1 {
             return 0;
         // Onetime purchase is not owned and player has enough points to purchase
         // or non-onetime purchase is not owned and player does not have enough points to purchase
-        } else if self.cost <= counter {
+        } else if self.cost <= gamevalues.counter {
             // Applies the purchase
             (self.func)(gamevalues, gamealchemy);
             self.owned += 1;
