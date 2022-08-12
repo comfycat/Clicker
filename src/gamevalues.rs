@@ -7,11 +7,13 @@ pub struct Gamevalues {
     pub persecond: i32,
     pub water: f32,
     pub water_capacity: f32,
-    pub alchemy_selected: usize
+    pub alchemy_selected: usize,
+    pub pets_selected: usize
 }
 
 impl Gamevalues {
-    pub fn new(counter: i32, clickpow_add: i32, clickpow_mult: i32, persecond: i32, water: f32, water_capacity: f32, alchemy_selected: usize) -> Gamevalues {
+    pub fn new(counter: i32, clickpow_add: i32, clickpow_mult: i32, persecond: i32, water: f32, water_capacity: f32, 
+            alchemy_selected: usize, pets_selected: usize) -> Gamevalues {
         Gamevalues {
             counter,
             clickpow_add,
@@ -19,7 +21,8 @@ impl Gamevalues {
             persecond,
             water,
             water_capacity,
-            alchemy_selected
+            alchemy_selected,
+            pets_selected
         }
     }
 

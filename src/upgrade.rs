@@ -27,6 +27,7 @@ impl Upgrade {
 
     // Renders the upgrade at the given x and y values
     pub fn render(&self, render_x: f32, render_y: f32) {
+        let upgrade_tuple = scale_text_in_box(self.width, self.height, 0.0, &self.text);
         // Sets the color the upgrade renders as based on type
         let render_color = if self.owned == 0 {RED} 
             else if self.onetime == false {BLUE} else {GREEN};
@@ -34,11 +35,10 @@ impl Upgrade {
         // If upgrade can be purchased multiple times, displays the number owned
         if !self.onetime {
             let output_text: String = format!("{}({})", &self.text, self.owned);
-            draw_text(&output_text, render_x, render_y + 30.0, scale_text_in_box(
-                self.width, self.height, 0.0, &output_text), DARKGRAY);
+            let onetime_tuple = scale_text_in_box(self.width, self.height, 0.0, &output_text);
+            draw_text(&output_text, render_x, render_y + onetime_tuple.1, onetime_tuple.0, DARKGRAY);
         } else {
-            draw_text(&self.text, render_x, render_y + 30.0, scale_text_in_box(
-                self.width, self.height, 0.0, &self.text), DARKGRAY);
+            draw_text(&self.text, render_x, render_y + upgrade_tuple.1, upgrade_tuple.0, DARKGRAY);
         }
     }
 

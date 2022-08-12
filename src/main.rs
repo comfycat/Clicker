@@ -6,11 +6,15 @@ use upgrade::Upgrade;
 use gamevalues::Gamevalues;
 use alchemy::Alchemy;
 use alchemyitems::Alchemyitems;
+use pets::Pets;
+use petitems::Petitems;
 
 mod upgrade;
 mod gamevalues;
 mod alchemy;
 mod alchemyitems;
+mod pets;
+mod petitems;
 
 #[macroquad::main("Clicker Game")]
 async fn main() {
@@ -20,8 +24,32 @@ async fn main() {
     // Creates constants for navigation buttons
     let (navigation_button_x, _navigation_button_y, navigation_button_w, navigation_button_h, navigation_button_text_color) =
         (screen_width() * 0.375, 0.0, screen_width() * 0.125, screen_height() * 0.125, PURPLE);
-    // Creates the text boxes for navigation buttons
-    let mut navigation_text = vec!["Fishing", "Upgrades", "Alchemy", "Stars", "Pets"];
+    
+    // Initalizes the current_render enum for determining which screen is rendered 
+    enum CurrentRender {
+        Fishing,
+        Upgrades,
+        Alchemy,
+        Stars,
+        Pets
+    }
+
+    // Initalizes the fishing_type enum for determining what to do with the fishing output
+    enum FishingType {
+        Fish,
+        Tomes,
+        Recipes,
+        Misc
+    }
+
+    let mut current_render: &CurrentRender = &CurrentRender::Fishing;
+    let mut fishing_type: &FishingType = &FishingType::Fish;
+    // Creates the text boxes for navigation buttons, and pairs them with their corresponding CurrentRender values
+    let navigation_text = vec![("Fishing", CurrentRender::Fishing), ("Upgrades", CurrentRender::Upgrades), 
+        ("Alchemy", CurrentRender::Alchemy), ("Stars", CurrentRender::Stars), ("Pets", CurrentRender::Pets)];
+    // Creates the text boxes for fishing types, and pairs them with their corresponding FishingType values
+    let fishing_type_text = vec! [("Fish", FishingType::Fish), ("Tomes", FishingType::Tomes), 
+        ("Recipes", FishingType::Recipes), ("Misc", FishingType::Misc)];
     // Creates constants for the top and bottom halves of main sections
     let (_left_main_section_x, right_main_section_x, top_main_section_y, bottom_main_section_y, main_section_w, main_section_h) =
         (0.0, screen_width() * 0.5, screen_height() * 0.125, screen_height() * 0.5625, screen_width() * 0.5, screen_height() * 0.4375);
@@ -35,8 +63,20 @@ async fn main() {
         (right_main_section_x + main_section_w * 0.05, upgrade_zone_h * 0.06, 
         main_section_w * 0.9, upgrade_zone_h * 0.1);
 
-    // Initalizes the current_render variable for determining which screen is rendered
-    let mut current_render = "Fishing";
+    // Creates the vector containing all pet items
+    let pet_items = vec![
+        Petitems::new("Water Blob", false, BLUE, Box::new(|gamevalues: &mut Gamevalues| {
+            if gamevalues.water + 1.0 <= gamevalues.water_capacity {
+                gamevalues.water += 1.0;
+            }
+        })),
+        Petitems::new("Sand Cat", false, BEIGE, Box::new(|_gamevalues: &mut Gamevalues| {
+
+        }))
+    ];
+
+    // Initalizes the pets variable as a struct
+    let mut gamepets = Pets::new(main_section_w, main_section_h, pet_items);
 
     // Creates the vector containing all alchemy items
     let alchemy_items = vec![
@@ -72,7 +112,8 @@ async fn main() {
     let mut gamealchemy = Alchemy::new(main_section_w, main_section_h, false, alchemy_items, vec![]);
     // Initalizes the gamevalues variable as a struct for maximizing player value from upgrades
     // TESTING Initalizing the persecond variable to determine points gained per second in the gamevalues struct
-    let mut gamevalues = Gamevalues::new(0, 1, 1, 0, 0.0, 10.0, 0);
+    let mut gamevalues = Gamevalues::new(0, 1, 1, 0, 0.0, 
+        10.0, 0, 0);
     // Creates the reference for counting seconds with
     let mut game_timer = Instant::now();
     
@@ -128,7 +169,10 @@ async fn main() {
         if game_timer.elapsed() > Duration::from_secs(1) {
             // Adds the income per second in the Gamevalues struct
             gamevalues.counter += gamevalues.persecond;
+            // Calls any pet benefits
+            gamepets.pet_persecond(&mut gamevalues);
             game_timer = Instant::now();
+            
         }
 
         //
@@ -139,9 +183,53 @@ async fn main() {
         // Checks the current rendering screen, and renders the proper items
         match current_render {
             // Clicker State
-            "Fishing" => {
-                // Creates the button the player presses to get points
-                // This may be moved to another tab in the future
+            CurrentRender::Fishing => {
+                // Renders the FishingSelect area, which has buttons to change the FishingType
+                draw_rectangle(right_main_section_x, top_main_section_y, main_section_w, main_section_h, LIGHTGRAY);
+                // Adds the text for saying the current type of fishing, with a border
+                // Takes up the top quarter of the section, and the full width
+                draw_rectangle(right_main_section_x, top_main_section_y, main_section_w, main_section_h * 0.25, GRAY);
+                // Writes the text saying the current type of fishing
+                // Creates the variable for the text, and then sets it based off of the type of fishing
+                let type_text: &str;
+                match fishing_type {
+                    FishingType::Fish => {
+                        type_text = "Fish";
+                    }
+                    FishingType::Tomes => {
+                        type_text = "Tomes";
+                    }
+                    FishingType::Recipes => {
+                        type_text = "Recipes";
+                    }
+                    FishingType::Misc => {
+                        type_text = "Misc";
+                    }
+                }
+                // Creates a tuple
+                let type_tuple = scale_text_in_box(main_section_w, main_section_h * 0.25, 0.0, type_text);
+                // Renders the text
+                draw_text(type_text, right_main_section_x, top_main_section_y + type_tuple.1, type_tuple.0, YELLOW);
+
+                // Renders the Fishing Type selection buttons
+                for (i, (text, fish_type)) in fishing_type_text.iter().enumerate() {
+                    // Establishes the x and y locations for the button
+                    let current_fishing_button_x = right_main_section_x + (main_section_w * 0.25) * i as f32;
+                    let current_fishing_button_y = top_main_section_y + main_section_h * 0.25;
+                    // Creates the background for the button
+                    draw_rectangle(current_fishing_button_x, current_fishing_button_y, main_section_w * 0.25, 
+                        main_section_h * 0.25, DARKGREEN);
+                    // Creates the text inside of the background
+                    let fishing_text_tuple = scale_text_in_box(main_section_w * 0.25,main_section_h * 0.25, 0.0, text);
+                    draw_text(text, current_fishing_button_x, current_fishing_button_y + fishing_text_tuple.1, 
+                        fishing_text_tuple.0, RED);
+                    
+                    if mouse_pressed && mouse_in_rectangle(current_fishing_button_x, current_fishing_button_y, 
+                        main_section_w * 0.25, main_section_w * 0.25) {
+                        fishing_type = fish_type;
+                    }
+                }
+                // Creates the button the player presses to go fishing, which changes based off of the FishingType
                 draw_circle(button_x, button_y, button_r, button_color);
                 // If the player presses the main button, it gives them a point
                 if mouse_pressed && mouse_in_circle(button_x, button_y, button_r) {
@@ -150,12 +238,15 @@ async fn main() {
             }
             // Clicker and Upgrades State
             // Creates the area for upgrades
-            "Upgrades" => {
+            CurrentRender::Upgrades => {
                 // Renders the upgrade zone inside of which upgrades go
                 draw_rectangle(right_main_section_x, top_main_section_y, main_section_w, upgrade_zone_h, upgrade_zone_color);
 
-                // Creates the zone to show current Per Second upgrades, to be added in the future
-                draw_rectangle(_left_main_section_x, bottom_main_section_y, main_section_w, main_section_h, BLUE);
+                // Renders the upgrade stats zone
+                draw_rectangle(_left_main_section_x, bottom_main_section_y, main_section_w, main_section_h, RED);
+                // Adds STATS: text at the top
+                let stat_tuple = scale_text_in_box(main_section_w, main_section_h * 0.2, 0.0, "STATS: ");
+                draw_text("STATS: ", _left_main_section_x, bottom_main_section_y + stat_tuple.1, stat_tuple.0, DARKGRAY);
                 // Renders the upgrades, and checks for purchases
                 for (i, upgrade) in upgrades.iter_mut().enumerate() {
                     // Factors out each upgrade's x, y, width, and height for use in the mouse_in_rectangle function
@@ -173,12 +264,12 @@ async fn main() {
             }
 
             // Alchemy State
-            "Alchemy" => {
+            CurrentRender::Alchemy => {
                 // Makes sure that the alchemy upgrade has been purchased
                 if gamealchemy.unlocked {
                     // Renders the cauldron items
                     gamealchemy.render_alchemy_preview(_left_main_section_x, top_main_section_y, 
-                        mouse_pressed, &mut gamevalues);
+                        mouse_pressed, &mut gamevalues, &mut gamepets);
                     // Renders the water section
                     gamealchemy.render_water(_left_main_section_x, bottom_main_section_y, &mut gamevalues);
                     // Renders the alchemy item descrption box, passing mouse_pressed to buy / use items
@@ -190,25 +281,33 @@ async fn main() {
                         mouse_pressed, &mut gamevalues);
                 }
             }
-            "Stars" => {}
-            "Pets" => {}
-            _ => {}
+            CurrentRender::Stars => {}
+            
+            // Pets State
+            CurrentRender::Pets => {
+                // Renders the Pets Details window
+                gamepets.render_pet_details(_left_main_section_x, bottom_main_section_y, &mut gamevalues);
+
+                // Renders the Pets Inventory Window
+                gamepets.render_pet_inventory(right_main_section_x, bottom_main_section_y, mouse_pressed, &mut gamevalues);
+            }
         }
 
         // Renders the Navigation buttons at the top
-        for (i, text) in navigation_text.iter_mut().enumerate() {
+        for (i, (text, navigation)) in navigation_text.iter().enumerate() {
             // Establishes the x location for the button
             let current_navigation_button_x = navigation_button_x + navigation_button_w * i as f32;
             // Creates the background for the button
             draw_rectangle(current_navigation_button_x, _navigation_button_y, navigation_button_w, 
                 navigation_button_h, DARKGREEN);
             // Creates the text inside of the background
-            draw_text(text, current_navigation_button_x, _navigation_button_y + navigation_button_h * 0.5, 
-                scale_text_in_box(navigation_button_w,navigation_button_h, 0.0, text), navigation_button_text_color);
+            let navigation_text_tuple = scale_text_in_box(navigation_button_w,navigation_button_h, 0.0, text);
+            draw_text(text, current_navigation_button_x, _navigation_button_y + navigation_text_tuple.1, 
+                navigation_text_tuple.0, navigation_button_text_color);
             
             if mouse_pressed && mouse_in_rectangle(current_navigation_button_x, _navigation_button_y, navigation_button_w, 
                 navigation_button_h) {
-                current_render = text;
+                current_render = navigation;
             }
         }
  
@@ -218,8 +317,10 @@ async fn main() {
         draw_rectangle(_counter_x, _counter_y, counter_w, counter_h, BLACK);
         // Displays the number of points that the player has
         let player_points = format!("Counter: {}", gamevalues.counter);
-        draw_text(&player_points, _counter_x, _counter_y + counter_h * 0.75, 
-            scale_text_in_box(counter_w, counter_h, 0.0, &player_points), PINK);
+        let player_points_tuple = scale_text_in_box(counter_w, counter_h, 0.0, &player_points);
+        
+        draw_text(&player_points, _counter_x, _counter_y + player_points_tuple.1, 
+            player_points_tuple.0, PINK);
         
         // Waits until it's time to draw the next frame
         next_frame().await
@@ -249,7 +350,8 @@ pub fn mouse_in_rectangle(x: f32, y: f32, w: f32, h: f32) -> bool {
 // Checks for the maximum font size that will fit in the given box, and returns that size
 // box_w, box_h, y_offset: width, height, and y offset of box to test
 // input_text: text to be put inside of box
-pub fn scale_text_in_box(box_w: f32, box_h: f32, y_offset: f32, input_text: &str) -> f32 {
+// Returns font_size, and the height of that font size
+pub fn scale_text_in_box(box_w: f32, box_h: f32, y_offset: f32, input_text: &str) -> (f32, f32) {
     // Creates a local copy of the default font to pass in
     let default_font = Font::default();
     // Creates a TextDimensions of the passed in box to test
@@ -266,9 +368,13 @@ pub fn scale_text_in_box(box_w: f32, box_h: f32, y_offset: f32, input_text: &str
         // Recreates test_dimensions with the larger text size, one larger so the text is always returned smaller than the box it is in
         test_dimensions = macroquad::text::measure_text(input_text, Some(default_font), increment + 1, 1.0);
     }
-    return increment as f32;
+    // sets the y offset to be in the middle of the box, plus half of the text height so that inputs of it 
+    let return_height = macroquad::text::measure_text(input_text, Some(default_font), increment, 1.0).height;
+    // Returns the font size, and the y offset
+    return (increment as f32, return_height);
 }
 
+// Takes in text, and returns the height offset
 
 /* let test_texture = Texture2D::from_file_with_format (
         include_bytes!(".\\banana.png"),

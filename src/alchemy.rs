@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use crate::{alchemyitems::Alchemyitems, mouse_in_rectangle, gamevalues::Gamevalues, scale_text_in_box};
+use crate::{alchemyitems::Alchemyitems, mouse_in_rectangle, gamevalues::Gamevalues, scale_text_in_box, pets::Pets};
 
 pub struct Alchemy {
     main_section_w: f32,
@@ -22,7 +22,7 @@ impl Alchemy {
 
     // Renders the Alchemy Preview section
     pub fn render_alchemy_preview(&mut self, _left_main_section_x: f32, top_main_section_y: f32, mouse_pressed: bool,
-        gamevalues: &mut Gamevalues) {
+        gamevalues: &mut Gamevalues, pets: &mut Pets) {
         // Renders the backdrop for the Alchemy Preview zone
         draw_rectangle(_left_main_section_x, top_main_section_y, self.main_section_w, self.main_section_h, LIGHTGRAY);
         
@@ -52,19 +52,15 @@ impl Alchemy {
         draw_rectangle(_left_main_section_x + self.main_section_w * 0.75, top_main_section_y + self.main_section_h * (5.0 / 7.0),
             self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0), DARKBLUE);
         // Renders the Empty text
-        draw_text("Empty", _left_main_section_x + self.main_section_w * 0.75, top_main_section_y + self.main_section_h * (6.0 / 7.0), 
-            scale_text_in_box(self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0), 
-            0.0, "Empty"), PINK);
+        let empty_tuple = scale_text_in_box(self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0), 0.0, "Empty");
+        draw_text("Empty", _left_main_section_x + self.main_section_w * 0.75, top_main_section_y + self.main_section_h * (5.0 / 7.0) + empty_tuple.1, 
+            empty_tuple.0, PINK);
         
         // Checks if the button got clicked on, and if so, empties the cauldron, returning the items
         if mouse_pressed && mouse_in_rectangle(_left_main_section_x + self.main_section_w * 0.75, top_main_section_y + self.main_section_h * (5.0 / 7.0),
         self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0)) {
             // Refunds the player's items
-            for (_i, value) in self.cauldron_items.iter().enumerate() {
-                self.items[*value].owned += 1;
-            }
-            // Empties the vector
-            self.cauldron_items.clear();
+            self.refund();
         }
 
         // Renders the craft button
@@ -75,18 +71,19 @@ impl Alchemy {
         draw_rectangle(_left_main_section_x, top_main_section_y + self.main_section_h * (5.0 / 7.0),
              self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0), DARKBLUE);
         // Renders the Craft text
-        draw_text("Craft", _left_main_section_x, top_main_section_y + self.main_section_h * (6.0 / 7.0), 
-            scale_text_in_box(self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0), 
-            0.0, "Craft"), PINK);
+        let craft_tuple = scale_text_in_box(self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0), 
+        0.0, "Craft");
+        draw_text("Craft", _left_main_section_x, top_main_section_y + self.main_section_h * (5.0 / 7.0) + craft_tuple.1, 
+            craft_tuple.0, PINK);
 
         // Checks if the button got clicked on, and attempts to run a craft if so
         if mouse_pressed && mouse_in_rectangle(_left_main_section_x, top_main_section_y + self.main_section_h * (5.0 / 7.0),
         self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0)) {
-            self.craft(gamevalues);
+            self.craft(gamevalues, pets);
         }
     }
 
-    // Renders the water bar
+    // Renders the water section
     pub fn render_water(&self, _left_main_section_x: f32, bottom_main_section_y: f32, gamevalues: &mut Gamevalues) {
         // Renders the water zone
         draw_rectangle(_left_main_section_x, bottom_main_section_y, self.main_section_w, self.main_section_h, GRAY);
@@ -107,19 +104,27 @@ impl Alchemy {
         // Display the name of the currently selected alchemy item
         // The name box is the top half of the box, and the name gets 2/7 of the top of the box, so it is 1/7 of the full height
         // It is also 3/5 of the full width
-        draw_text(&self.items[gamevalues.alchemy_selected].name, right_main_section_x + 5.0, top_main_section_y + self.main_section_h / 10.0, 
-            scale_text_in_box(self.main_section_w * 0.6, self.main_section_h / 7.0, 0.0, 
-            &self.items[gamevalues.alchemy_selected].name), PINK);
+        let item_render_tuple = scale_text_in_box(self.main_section_w * 0.6, self.main_section_h / 7.0, 0.0, 
+            &self.items[gamevalues.alchemy_selected].name);
+        draw_text(&self.items[gamevalues.alchemy_selected].name, right_main_section_x + 5.0, top_main_section_y + item_render_tuple.1, 
+            item_render_tuple.0, PINK);
         // Renders the amount of the item owned
         // X value is the same as main box
         // Y value is main box + 1/2 of the height as it starts after the description area which takes up half
         // Width is 3/8 of main section
         // Height is 3/14 of main section
-        
+        let item_owned_tuple = scale_text_in_box(self.main_section_w * 0.375, 
+            self.main_section_h * (3.0 / 14.0), 0.0, &self.items[gamevalues.alchemy_selected].name);
         draw_text(&format!("Owned: ({})", self.items[gamevalues.alchemy_selected].owned), right_main_section_x, 
-            top_main_section_y + self.main_section_h * 0.5, scale_text_in_box(self.main_section_w * 0.375, 
-            self.main_section_h * (3.0 / 14.0), 0.0, &self.items[gamevalues.alchemy_selected].name), PINK);
+            top_main_section_y + self.main_section_h * 0.5 + item_owned_tuple.1, item_owned_tuple.0, PINK);
         
+        // Renders the cost of the selected item
+        // x value is the same as main box
+        // Y value is main box + 1/2 of the height, plus 1/8 of the height so 5/8 of the height
+        let item_cost_tuple = scale_text_in_box(self.main_section_w * 0.375, 
+            self.main_section_h * (3.0 / 14.0), 0.0, &self.items[gamevalues.alchemy_selected].name);
+        draw_text(&format!("Cost: {}", self.items[gamevalues.alchemy_selected].owned), right_main_section_x, 
+            top_main_section_y + self.main_section_h * 0.5 + item_owned_tuple.1 + item_cost_tuple.1, item_owned_tuple.0, PINK);
         // Renders the Purchase item button
         // X value is the same as main box
         // Y value is main box + 5/7 of the height as it touches the bottom
@@ -128,9 +133,10 @@ impl Alchemy {
         draw_rectangle(right_main_section_x, top_main_section_y + self.main_section_h * (5.0 / 7.0),
              self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0), DARKGREEN);
         // Renders the Purchase text
-        draw_text("Purchase", right_main_section_x, top_main_section_y + self.main_section_h * (6.0 / 7.0), 
-            scale_text_in_box(self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0), 
-            0.0, "Purchase"), PINK);
+        let purchase_tuple = scale_text_in_box(self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0), 
+        0.0, "Purchase");
+        draw_text("Purchase", right_main_section_x, top_main_section_y + self.main_section_h * (5.0 / 7.0) + purchase_tuple.1, 
+            purchase_tuple.0, PINK);
         
         // Checks if purchase button got clicked on, and if so attempts to purchase it
         if mouse_pressed && mouse_in_rectangle(right_main_section_x, top_main_section_y + self.main_section_h * (5.0 / 7.0),
@@ -151,9 +157,10 @@ impl Alchemy {
         draw_rectangle(right_main_section_x + self.main_section_w * 0.75, top_main_section_y + self.main_section_h * (5.0 / 7.0),
              self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0), DARKGREEN);
         // Renders the Add Item to Cauldron text
-        draw_text("Add", right_main_section_x + self.main_section_w * 0.75, top_main_section_y + self.main_section_h * 0.9, 
-            scale_text_in_box(self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0), 
-            0.0, "Add"), PINK);
+        let add_tuple = scale_text_in_box(self.main_section_w * 0.25, self.main_section_h * (2.0 / 7.0), 
+        0.0, "Add");
+        draw_text("Add", right_main_section_x + self.main_section_w * 0.75, top_main_section_y + self.main_section_h * (5.0 / 7.0) + add_tuple.1, 
+            add_tuple.0, PINK);
         
         // Checks if the item got clicked on, and if any are owned, adds them to the cauldron
         if mouse_pressed && mouse_in_rectangle(right_main_section_x + self.main_section_w * 0.75, top_main_section_y + self.main_section_h * (5.0 / 7.0),
@@ -220,7 +227,7 @@ impl Alchemy {
     }
 
     // Attempts to use the player's cauldron items to complete a craft
-    pub fn craft(&mut self, gamevalues: &mut Gamevalues) {
+    pub fn craft(&mut self, gamevalues: &mut Gamevalues, pets: &mut Pets) {
         // Fill water craft: only one water inside
         if self.cauldron_items == vec![0] {
             // Makes sure there is room in the water gauge
@@ -234,12 +241,41 @@ impl Alchemy {
                 self.items[0].owned += 1;
                 self.cauldron_items.clear();
             }
+        // Current Create Water Blob craft
+        } else if self.cauldron_items == vec![0, 5] {
+            // Makes sure that the pet is not already owned
+            if !pets.pet_list[0].owned {
+                // Trying to create another constraint, needs 2 water in cauldron to craft as well
+                if gamevalues.water >= 2.0 {
+                    // Creates the water blob
+                    pets.pet_list[0].owned = true;
+                    // Reduces the water by the amount
+                    gamevalues.water -= 2.0;
+                    // Empties the cauldron items vector
+                    self.cauldron_items.clear();
+                } else {
+                    // Otherwise, returns the items to the player's inventory
+                    self.items[0].owned += 1;
+                    self.items[5].owned += 1;
+                    self.cauldron_items.clear();
+                }
+            } else {
+                // Otherwise, returns the items to the player's inventory
+                self.refund();
+            }
         } else {
             // If the craft was not valid, empties the cauldron back into the player's inventory
-            for (_i, value) in self.cauldron_items.iter().enumerate() {
-                self.items[*value].owned += 1;
-            }
-            self.cauldron_items.clear();
+            self.refund();
         }
+    }
+
+    // Empties the current crafting queue, refunding all items inside back to the player's alchemy inventory
+    pub fn refund(&mut self) {
+        // Iterates through the cauldron items vec, taking each item and returning it to the inventory.
+        for (_i, value) in self.cauldron_items.iter_mut().enumerate() {
+            self.items[*value].owned += 1;
+        }
+        // Clears the inventory
+        self.cauldron_items.clear();
     }
 }
