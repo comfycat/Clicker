@@ -235,6 +235,11 @@ async fn main() {
                 if mouse_pressed && mouse_in_circle(button_x, button_y, button_r) {
                     gamevalues.counter += gamevalues.get_clickpower();  
                 }
+
+                // TEST
+                // CREATES A TEST BOX USING THE NEW METHOD
+                draw_bordered_text_box(right_main_section_x * 0.5, bottom_main_section_y * 0.5, main_section_w, main_section_h, BLUE, YELLOW, PINK, "Hello World!");
+                draw_bordered_text_box(100.0, 330.0, 300.0, 150.0, RED, BLACK, GOLD, "hi");
             }
             // Clicker and Upgrades State
             // Creates the area for upgrades
@@ -372,6 +377,44 @@ pub fn scale_text_in_box(box_w: f32, box_h: f32, y_offset: f32, input_text: &str
     let return_height = macroquad::text::measure_text(input_text, Some(default_font), increment, 1.0).height;
     // Returns the font size, and the y offset
     return (increment as f32, return_height);
+}
+
+// Draws a box with text centered inside of it and an outline
+// box_x, box_y, box_w, box_h, box_color, border_color, text_color, and input_text
+// input_text: text to be put inside of the box
+// does not return a value
+pub fn draw_bordered_text_box(box_x: f32, box_y: f32, box_w: f32, box_h: f32, box_color: Color, border_color: Color, text_color:Color, input_text: &str) {
+    // Draws the outer text box
+    draw_rectangle(box_x, box_y, box_w, box_h, box_color);
+
+    // Draws the border on the box at 90% of the original margins, 
+    let (border_w, border_h) = (box_w * 0.96, box_h * 0.96);
+    draw_rectangle_lines(box_x + box_w * 0.02, box_y + box_h * 0.02, border_w, border_h, box_h * 0.02, border_color);
+
+    // Determines the font size to use
+    // The old scale_text_in_box method
+    let default_font = Font::default();
+    // Creates a TextDimensions of the passed in box to test
+    let box_dimensions = macroquad::text::TextDimensions {width: border_w, height: border_h, offset_y: 0.0};
+    // Creates the value which is incremented to make the text size bigger
+    let mut increment = 1;
+    // Creates the TextDimensions which is compared against box_dimensions and has its text size incremented
+    let mut test_dimensions = macroquad::text::measure_text(input_text, Some(default_font), increment, 1.0);
+    // Loops while the dimensions of test_dimensions is smaller than the box's dimensions
+    // Every loop, the dimensions of test_dimensions gets bigger until they are ~= the box's dimensions
+    while test_dimensions.width <= box_dimensions.width && test_dimensions.height <= box_dimensions.height {
+        // Makes the text size larger
+        increment += 1;
+        // Recreates test_dimensions with the larger text size, one larger so the text is always returned smaller than the box it is in
+        test_dimensions = macroquad::text::measure_text(input_text, Some(default_font), increment + 1, 1.0);
+    }
+    // Gets the height and width values out of text_dimensions to center the text box
+    let height_offset = macroquad::text::measure_text(input_text, Some(default_font), increment, 1.0).height;
+    let width_offset = macroquad::text::measure_text(input_text, Some(default_font), increment, 1.0).width;
+    // Draws the text inside of the box
+    //
+    draw_text(input_text, box_x + box_w * 0.03, box_y + height_offset * 0.5 + border_h * 0.5, increment as f32, text_color);
+
 }
 
 // Takes in text, and returns the height offset
